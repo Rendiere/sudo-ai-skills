@@ -162,6 +162,7 @@ The UAT sheet (`1fgy7Nd9bwZv48REqRRDAvYU7UnNhkt3oYkI-oywHvCM`) is the **single s
    - Link to the "Launch Readiness" tab.
 5. After user-approved merge: wait for `deploy-prod.yml`. Fix and re-trigger if any step fails.
 6. Verify prod (`https://etchapp.art`) via Playwright MCP — at minimum, smoke the surface that this release changed at both viewports.
+7. **Sweep worktrees.** From the main etch checkout (not from a `.worktrees/...` subdir), run `make worktree-clean-dry` to preview, then `make worktree-clean` to remove the worktrees whose PRs just merged in this release. Skips dirty trees and open PRs automatically. The auto-prune hook already handles the per-merge happy path; this catches everything bundled into the release PR.
 
 ### 4. Hand-off
 
