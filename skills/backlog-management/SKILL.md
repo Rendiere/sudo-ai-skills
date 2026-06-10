@@ -56,6 +56,15 @@ Resolves ETC-XX
 
 A GitHub Actions auto-advance workflow moves the Linear issue along automatically once that PR merges with passing checks — **no AI in the loop, no manual reconciliation.** That magic line is the entire mechanism; if it's missing, the issue won't advance.
 
+**Two stages — `Staged`, then `Done`:**
+
+- Merge into **`dev`** → the issue moves to **`Staged`**: engineering-complete, on dev, awaiting release.
+- Merge the **`dev`→`main`** release → each referenced issue moves to **`Done`** (live in prod) and is tagged **`release: vX.Y.Z`**.
+
+So `Done` always means "a real user can use it", and the `release:` label batches everything that shipped in one version. `Staged` sits in Linear's *Completed* group (it reads as finished) but stays distinct from live. Adding the `Staged` state is a one-time Team → Workflow settings change — it can't be created via the API.
+
+**The reference is mandatory, enforced by CI.** A `linear-ref-check` job fails any dev PR whose body has no `Closes/Fixes/Resolves ETC-XX` — unless it carries a `no-linear` label for genuinely untracked mechanical PRs. That gate is what makes the auto-advance reliable instead of dependent on someone remembering. At release time, `scripts/linear-release-reconcile.sh` lists what's `Staged` so the release PR provably references every shipping issue.
+
 - Use the `/close-linear <ETC-XX>` skill to generate a PR with the right `Closes ETC-XX` line, branch, and commit message.
 - **Multi-task / release PRs:** include one `Closes ETC-XX` line per Linear issue rolled in.
 
@@ -84,11 +93,13 @@ set -euo pipefail
 : "${LINEAR_API_KEY:?need LINEAR_API_KEY}"
 : "${LINEAR_TEAM_ID:?need LINEAR_TEAM_ID}"
 
-# Fetch all completed + canceled issue IDs, archive each
+# Fetch all completed + canceled issue IDs, archive each.
+# Exclude `Staged`: it's a completed-TYPE state but the issue is awaiting release,
+# not finished — archiving it would drop release-pending work off the board.
 query='query($teamId: ID!, $after: String) {
   issues(first: 100, after: $after, filter: {
     team: {id: {eq: $teamId}},
-    state: {type: {in: [completed, canceled]}}
+    state: {type: {in: [completed, canceled]}, name: {neq: "Staged"}}
   }) { nodes { id identifier } pageInfo { hasNextPage endCursor } }
 }'
 

@@ -2,6 +2,10 @@
 # Archive all Done + Canceled Linear issues in a team.
 # Soft-delete — reversible via Linear UI.
 #
+# `Staged` is excluded: it's a completed-TYPE state, but a Staged issue is
+# awaiting release, not finished — archiving it would drop release-pending work
+# off the board.
+#
 # Requires:
 #   LINEAR_API_KEY - Linear personal API key
 #   LINEAR_TEAM_ID - UUID of the team
@@ -16,7 +20,7 @@ set -euo pipefail
 GQL='query($teamId: ID!, $type: String!) {
   issues(first: 100, filter: {
     team: {id: {eq: $teamId}},
-    state: {type: {eq: $type}}
+    state: {type: {eq: $type}, name: {neq: "Staged"}}
   }) { nodes { id identifier } }
 }'
 
