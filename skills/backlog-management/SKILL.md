@@ -1,73 +1,80 @@
 ---
 name: backlog-management
-description: Use when syncing beads with Linear (or other stakeholder trackers), when Linear hits its issue limit, when deciding which beads should be visible to stakeholders, or when cleaning up a bloated issue tracker. Keeps Linear as a curated stakeholder view while beads holds all implementation detail.
+description: Use when deciding whether something belongs as a Linear issue, keeping the Linear board readable and under its plan's issue cap, filing a bug in the standing "Operate a healthy site" project, or answering questions about how the WHAT (Linear) relates to the HOW (Compound Engineering plans). Keeps Linear curated, humanized, and readable for non-technical stakeholders.
 ---
 
 # Backlog Management
 
 ## Overview
 
-**Two trackers, two audiences.** Linear is the stakeholder/human view — epics, user-facing features, bugs worth reporting. Beads is the agent/implementation view — every task, sub-task, and internal detail. They must not be mirrors of each other, or Linear bloats and you hit the plan's issue cap.
+**One tracker: Linear.** Linear is the system of record for *what* work exists and how it's going — workspace `sudolabsuk`, team **EtchArt** (issue key `ETC`). There is no second tracker for implementation detail; everything that's a work item lives here. Keep Linear readable for a non-technical teammate (Louis): outcomes, not code.
 
-**Core rule:** Only epics, features, and externally-visible bugs flow from beads to Linear. Implementation `task` beads stay local.
+**Linear = the WHAT. Compound Engineering = the HOW.** `/ce-plan` → `/ce-work` → `/ce-compound`. A CE plan (`docs/plans/ETC-XX-slug.md`) is per-task scratch — never a shadow backlog. Linear stays the WHAT.
 
-## When to Use
+## Structure
 
-- Beads ↔ Linear sync returns `usage limit exceeded` on issue creation
-- Linear has 200+ issues and most are implementation noise
-- You're about to create a beads issue and wondering whether it belongs in Linear
-- Stakeholders complain Linear is unreadable
-- You want a clean epic view in Linear with child work summarised
+- **Initiative → projects → issues.** Each project has one owner and is *completable* (it can be finished and closed).
+- **Issues carry plain-language acceptance criteria** — a teammate who doesn't read code should understand what "done" means.
+- **Area / function is a label, never a project** (e.g. `auctions`, `onboarding`, `infra`). Don't spin up a project per area.
 
-## Sync Model
+## `ETC-XX` is the join key
 
-| Beads `issue_type` | Sync to Linear? | Meaning |
-|---|---|---|
-| `epic` | ✅ yes | High-level deliverable, stakeholder-tracked |
-| `feature` | ✅ yes | User-facing unit worth external visibility |
-| `bug` | ✅ yes | Bug the user/stakeholder would recognise |
-| `task` | ❌ local only | Implementation step under an epic |
-| `chore` | ❌ local only | Housekeeping |
+One ID ties the whole task together:
 
-**Default push command:**
-```bash
-bd linear sync --push --exclude-type=task,chore
+- the **Linear issue** (`ETC-XX`)
+- its **CE plan** — `docs/plans/ETC-XX-slug.md`, in the repo the work is *for* (etch feature → plan in `etch`; framework work → plan in the framework repo)
+- its **branch / worktree** — `etc-XX-slug`
+- its **`/ce-compound` learnings**
+
+## Humanize Linear text
+
+Run the `humanizer` skill on anything written into Linear, and format it to scan:
+
+- short lead line, then bullets over paragraphs
+- plain verbs, few em-dashes
+- outcomes a stakeholder cares about, not implementation steps
+
+## Bugs in shipped features
+
+Bugs are the **one case where an issue is always filed** — we want the learning trail.
+
+- File every shipped-feature bug as a real Linear issue in **one standing project**: [Operate a healthy site](https://linear.app/sudolabsuk/project/operate-a-healthy-site-801def1c19ba) (under the active initiative).
+- **Never** reopen a finished project; **never** create a new project per bug.
+- When the fix ships, add a one-line entry to that project's **"Fix log"** checklist.
+
+Feature / development work is **not** a "bug issue" — it follows the normal Initiative → project → issue flow.
+
+## Closing work (no manual sync)
+
+Every PR that closes a Linear issue MUST carry one of these in its body:
+
+```
+Closes ETC-XX
+Fixes ETC-XX
+Resolves ETC-XX
 ```
 
-Bidirectional sync on pull still imports everything from Linear (issues filed by humans there), and anything imported keeps a `linear:ETC-XX` label — use `/close-linear` for those.
+A GitHub Actions auto-advance workflow moves the Linear issue along automatically once that PR merges with passing checks — **no AI in the loop, no manual reconciliation.** That magic line is the entire mechanism; if it's missing, the issue won't advance.
 
-## Creating Work
+- Use the `/close-linear <ETC-XX>` skill to generate a PR with the right `Closes ETC-XX` line, branch, and commit message.
+- **Multi-task / release PRs:** include one `Closes ETC-XX` line per Linear issue rolled in.
 
-**Implementation tasks** (most work):
-```bash
-bd create "Playwright: cancel dialog wording" --type=task --parent=<epic-id>
-```
-No external_ref, never pushed to Linear.
+## Keeping Linear under its issue cap
 
-**Stakeholder-visible deliverables:**
-```bash
-bd create "Epic: Show-gated auctions" --type=epic --labels=epic
-# Sync will push this to Linear automatically on next `bd linear sync --push`
-```
-
-**When to promote a task → feature:** If you catch yourself explaining the task to the user (not the team), it probably belongs in Linear as a `feature`.
-
-## Linear Cleanup Procedure
-
-When Linear approaches its issue cap (250 on Free plan), run:
+Linear's Free plan has a hard issue cap. When you approach it, archive completed work — archiving is soft-delete: it drops the issue from the cap but preserves history (un-archive via the Linear UI if needed).
 
 ```bash
-# 1. Check subscription & count
+# 1. Check subscription type & current count
 curl -s -X POST https://api.linear.app/graphql \
   -H "Authorization: $LINEAR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"query":"query { organization { subscription { type } } team(id: \"TEAM_ID\") { issueCount } }"}'
 
 # 2. Archive all Done + Canceled issues (reversible)
-# Use scripts/archive-completed.sh (see below)
+LINEAR_API_KEY=... LINEAR_TEAM_ID=... ./scripts/archive-completed.sh
 ```
 
-Archiving in Linear is soft-delete — it removes the issue from the cap but preserves history. Un-archive via Linear UI if needed.
+`LINEAR_API_KEY` lives in `.env.agent` (not `.env`) — source it before running the script.
 
 ### scripts/archive-completed.sh
 
@@ -107,49 +114,26 @@ while :; do
 done
 ```
 
-## Summarising Children Into a Linear Epic
+## Red flags
 
-Linear epics should show their child beads as a checklist. Pattern:
+- **Creating a Linear project per area or per bug** → area is a label; bugs go in *Operate a healthy site*.
+- **A CE plan growing into a backlog** → that's the tracker's job. Promote durable work items into Linear issues; the plan stays per-task scratch.
+- **A PR that closes work but has no `Closes ETC-XX` line** → the issue won't auto-advance. Add the line before merge.
+- **Linear text written in engineer-speak** → run `humanizer`; lead with the outcome.
+- **Near the issue cap and creating new issues** → archive Done + Canceled first (`scripts/archive-completed.sh`).
 
-```bash
-# For beads epic <epic-id> already linked to Linear (has external_ref ETC-XX):
-bd children <epic-id> --json | jq -r '.[] | "- [\(if .status=="closed" then "x" else " " end)] \(.title)"'
-# → paste this block into the Linear issue description via GraphQL issueUpdate
-```
-
-Automate with a helper command `/sync-epic-to-linear <epic-id>` that:
-1. Reads the beads epic and its children
-2. Builds the checklist markdown
-3. Fetches current Linear description, replaces/appends the `<!-- BEADS --> ... <!-- /BEADS -->` block
-4. Posts `issueUpdate` via GraphQL
-
-Keep the markers so the block is idempotent and won't clobber human-written description content.
-
-## Closing a Linear-Originated Issue
-
-Use the existing `/close-linear <task-id>` skill — it only fires on beads with a `linear:ETC-XX` label (set when the issue was pulled from Linear or pushed via sync). Beads without that label close with plain `bd close`.
-
-## Red Flags
-
-- **Creating a `task` bead for something a stakeholder will ask about** → use `feature` instead
-- **Adding many `task` beads to Linear via default sync** → re-check the `--exclude-type=task` flag on the sync command or `bd config`
-- **Pushing before cleanup when near the cap** → run `scripts/archive-completed.sh` first or new-issue creation fails silently
-- **Editing a Linear epic description by hand after `/sync-epic-to-linear` set it** → your edits outside the `<!-- BEADS -->` markers are safe; edits inside will be overwritten on next sync
-
-## Quick Reference
+## Quick reference
 
 ```bash
-# Never sync every beads to Linear
-bd linear sync --push --exclude-type=task,chore       # preferred default
-bd linear sync --pull                                  # import human-filed issues
+# Close work: let the PR do it — magic line in the body, then merge
+Closes ETC-XX            # (or Fixes / Resolves)
+/close-linear ETC-XX     # generates the PR with that line for you
 
-# Pre-flight before push
-bd linear sync --dry-run --push --exclude-type=task,chore
-
-# Periodic cleanup (run when total count > 200 on Free plan)
+# Keep Linear under the cap (LINEAR_API_KEY from .env.agent)
 LINEAR_API_KEY=... LINEAR_TEAM_ID=... ./scripts/archive-completed.sh
 
-# When creating new work, pick the right type
-bd create "User-facing deliverable" --type=feature     # → Linear
-bd create "Implementation step"     --type=task        # → local only
+# Filing work
+# - feature/dev work → Initiative → project → issue (normal flow)
+# - bug in a shipped feature → issue in "Operate a healthy site" + Fix-log entry
+# - area/function → a label, never a project
 ```
