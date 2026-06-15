@@ -1,0 +1,30 @@
+{
+  "quote_no": "Q2026-001",
+  "date": "15 June 2026",
+  "valid_until": "15 July 2026",
+  "bill_to": {
+    "name": "Therese Botha",
+    "org": "Icon Villas",
+    "email": "therese@iconvillas.com"
+  },
+  "project": "Automated Reservations Loading Agent",
+  "items": [
+    {
+      "title": "Automated Reservations Loading Agent &mdash; Build",
+      "desc": "One-off build of the agent that watches the shared reservations@iconvillas.com mailbox and automatically captures every <b>new reservation enquiry</b> into your existing Notion reservations workspace. Extracts the booking fields, handles English and Afrikaans, and flags anything it isn't confident about for human review before it reaches the main database. No duplicate entries.",
+      "amount": 10000,
+      "unit": "once-off"
+    },
+    {
+      "title": "Automated Reservations Loading Agent &mdash; Operations",
+      "desc": "Monthly cost of keeping the agent running: email infrastructure, AI processing, cloud hosting and monitoring. Assumes current volume of ~10&ndash;100 emails per week. Billed monthly from go-live.",
+      "amount": 500,
+      "unit": "per month"
+    }
+  ],
+  "scope": [
+    "<b>Included (this build):</b> automatic capture of <b>new</b> reservation enquiries into Notion, as described above.",
+    "<b>Not included (future, quoted separately):</b> Phase 2 &mdash; handling replies and ongoing back-and-forth on an existing reservation thread. Phase 3 &mdash; to be defined."
+  ],
+  "payment": "<b>Build:</b> 100% on delivery.&nbsp;&nbsp;<b>Operations:</b> R 500.00 billed monthly from go-live."
+}
