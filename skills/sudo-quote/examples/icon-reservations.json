@@ -12,7 +12,7 @@
     {
       "title": "Automated Reservations Loading Agent &mdash; Build",
       "desc": "One-off build of the agent that watches the shared reservations@iconvillas.com mailbox and automatically captures every <b>new reservation enquiry</b> into your existing Notion reservations workspace. Extracts the booking fields, handles English and Afrikaans, and flags anything it isn't confident about for human review before it reaches the main database. No duplicate entries.",
-      "amount": 10000,
+      "amount": 8000,
       "unit": "once-off"
     },
     {
